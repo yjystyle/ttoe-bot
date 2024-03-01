@@ -280,7 +280,7 @@ client.on("interactionCreate", async (interaction) => {
       .permissionsFor(interaction.guild.roles.everyone)
       .has(PermissionsBitField.Flags.ViewChannel);
     if (channelCheck) return;
-    
+
     const guild = client.guilds.cache.get(process.env.GUILD_ID);
     await rebuildDB(guild);
     // Iterate over each member/user and log their username and ID
@@ -331,7 +331,7 @@ let sendStatusMessageToChannel = function () {
       // 조인문 필요
       const userChannels = await UserChannel.findAll({
         include: [{ model: User }, { model: Channel }],
-        where: { date:getKSTToday(), channelId: channel_id }, // 채널 ID 조건 추가
+        where: { date: getKSTToday(), channelId: channel_id }, // 채널 ID 조건 추가
       });
 
       let canGameFlag = getCanGameFlag(userChannels);
@@ -396,7 +396,7 @@ let sendMessageToChannel = function (channelId) {
       // 조인문 필요
       const userChannels = await UserChannel.findAll({
         include: [{ model: User }, { model: Channel }],
-        where: { date:getKSTToday(), channelId: channel_id }, // 채널 ID 조건 추가
+        where: { date: getKSTToday(), channelId: channel_id }, // 채널 ID 조건 추가
       });
 
       let canGameFlag = getCanGameFlag(userChannels);
@@ -459,7 +459,7 @@ client.on("interactionCreate", async (interaction) => {
     // await interaction.deferReply({ ephemeral: true });
     // let channel = interaction.channels.cache;
     // console.log(channel);
-    const username = interaction.user.globalName;
+    const username = interaction.user.globalName ?? interaction.user.name;
     if (interaction.customId === "0") {
       changeStatus(interaction);
 
@@ -468,7 +468,7 @@ client.on("interactionCreate", async (interaction) => {
       const { UserChannel, User, Channel } = db.models;
       const userChannels = await UserChannel.findAll({
         include: [{ model: User }, { model: Channel }],
-        where: { date:getKSTToday(), channelId: interaction.channel.id }, // 채널 ID 조건 추가
+        where: { date: getKSTToday(), channelId: interaction.channel.id }, // 채널 ID 조건 추가
       });
       let canGameFlag = getCanGameFlag(userChannels);
       if (canGameFlag === 0) {
@@ -553,8 +553,7 @@ const getCanGameFlag = function (userChannels) {
   }
 };
 
-const rebuildDB = async function(guild){
-
+const rebuildDB = async function (guild) {
   const { User, Channel, UserChannel } = db.models;
   // truncate
   // await db.connection.destroyAll();
@@ -575,7 +574,7 @@ const rebuildDB = async function(guild){
       User.upsert({
         user_id: member.user.id,
         name: member.user.username,
-        globalName: member.user.globalName,
+        globalName: member.user.globalName ?? member.user.username,
         bot: member.user.bot,
       });
     });
@@ -624,7 +623,7 @@ const rebuildDB = async function(guild){
           });
         });
     });
-}
+};
 const getKSTToday = function () {
   // 현재 시각을 KST로 변환하여 가져옵니다.
   const kstNow = moment().tz("Asia/Seoul");
