@@ -280,77 +280,10 @@ client.on("interactionCreate", async (interaction) => {
       .permissionsFor(interaction.guild.roles.everyone)
       .has(PermissionsBitField.Flags.ViewChannel);
     if (channelCheck) return;
-
-    const { User, Channel, UserChannel } = db.models;
-    // truncate
-    // await db.connection.destroyAll();
-    await UserChannel.destroy({ truncate: true });
-    await Channel.destroy({ truncate: true });
-    await User.destroy({ truncate: true });
-
-    // console.log(interaction);
-    const guild = interaction.guild;
-    await guild.members.fetch();
-    const members = guild.members.cache;
-
-    members
-      .filter((member) => !member.user.bot)
-      .forEach((member) => {
-        User.upsert({
-          user_id: member.user.id,
-          name: member.user.username,
-          globalName: member.user.globalName,
-          bot: member.user.bot,
-        });
-      });
-
-    await guild.channels.fetch();
-    const channels = guild.channels.cache;
-
-    // let channelFilter = ["general", "로비"];
-    const memberIdList = members
-      .filter((member) => !member.user.bot)
-      .map((member) => member.id);
-
-    channels
-      .filter(
-        (channel) =>
-          !channel
-            .permissionsFor(guild.roles.everyone)
-            .has(PermissionsBitField.Flags.ViewChannel)
-      )
-      .filter((channel) => channel.type === 0)
-      .forEach((channel) => {
-        // console.log('여기까지 얼마나 오냐?', channel.name);
-        Channel.upsert({
-          channel_id: channel.id,
-          channel_name: channel.name,
-          game_name: channel.name,
-        });
-
-        memberIdList
-          .filter((memberId) =>
-            channel
-              .permissionsFor(memberId)
-              .has(PermissionsBitField.Flags.ViewChannel)
-          )
-          .forEach((memberId) => {
-            console.log(
-              channel.name,
-              channel
-                .permissionsFor(memberId)
-                .has(PermissionsBitField.Flags.ViewChannel)
-            );
-            UserChannel.upsert({
-              date: getKSTToday(),
-              userId: memberId,
-              channelId: channel.id,
-            });
-          });
-      });
-
+    
+    const guild = client.guilds.cache.get(process.env.GUILD_ID);
+    await rebuildDB(guild);
     // Iterate over each member/user and log their username and ID
-
     await interaction.reply({
       content: `${guild.name}내의 모든 유저 정보가 갱신되었습니다.`,
       ephemeral: true,
@@ -596,7 +529,9 @@ let reschedule = function (input) {
 let scheduledTime = "0 10 * * *"; // 초기 스케쥴러 시간 (매일 오후 2시 30분)
 const cronwork = new CronJob(
   scheduledTime,
-  function () {
+  async function () {
+    const guild = client.guilds.cache.get(process.env.GUILD_ID);
+    await rebuildDB(guild);
     checkAndSendMessage();
   },
   null,
@@ -617,6 +552,79 @@ const getCanGameFlag = function (userChannels) {
     return 1;
   }
 };
+
+const rebuildDB = async function(guild){
+
+  const { User, Channel, UserChannel } = db.models;
+  // truncate
+  // await db.connection.destroyAll();
+  await UserChannel.destroy({ truncate: true });
+  await Channel.destroy({ truncate: true });
+  await User.destroy({ truncate: true });
+
+  // console.log(interaction);
+  // console.log(guilds);
+
+  // const guild = interaction.guild;
+  await guild.members.fetch();
+  const members = guild.members.cache;
+
+  members
+    .filter((member) => !member.user.bot)
+    .forEach((member) => {
+      User.upsert({
+        user_id: member.user.id,
+        name: member.user.username,
+        globalName: member.user.globalName,
+        bot: member.user.bot,
+      });
+    });
+
+  await guild.channels.fetch();
+  const channels = guild.channels.cache;
+
+  // let channelFilter = ["general", "로비"];
+  const memberIdList = members
+    .filter((member) => !member.user.bot)
+    .map((member) => member.id);
+
+  channels
+    .filter(
+      (channel) =>
+        !channel
+          .permissionsFor(guild.roles.everyone)
+          .has(PermissionsBitField.Flags.ViewChannel)
+    )
+    .filter((channel) => channel.type === 0)
+    .forEach((channel) => {
+      // console.log('여기까지 얼마나 오냐?', channel.name);
+      Channel.upsert({
+        channel_id: channel.id,
+        channel_name: channel.name,
+        game_name: channel.name,
+      });
+
+      memberIdList
+        .filter((memberId) =>
+          channel
+            .permissionsFor(memberId)
+            .has(PermissionsBitField.Flags.ViewChannel)
+        )
+        .forEach((memberId) => {
+          console.log(
+            channel.name,
+            channel
+              .permissionsFor(memberId)
+              .has(PermissionsBitField.Flags.ViewChannel)
+          );
+          UserChannel.upsert({
+            date: getKSTToday(),
+            userId: memberId,
+            channelId: channel.id,
+          });
+        });
+    });
+}
 const getKSTToday = function () {
   // 현재 시각을 KST로 변환하여 가져옵니다.
   const kstNow = moment().tz("Asia/Seoul");
