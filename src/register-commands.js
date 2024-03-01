@@ -1,10 +1,16 @@
-require("dotenv").config();
+const dotenv = require("dotenv");
+if (process.env.NODE_ENV === "prd") {
+  dotenv.config({ path: ".env.prd" });
+} else {
+  dotenv.config({ path: ".env.dev" });
+}
+
 const { REST, Routes, ApplicationCommandOptionType } = require("discord.js");
 
 const commands = [
 {
-    name: "기회",
-    description: "한번 봐줌"
+    name: "떠",
+    description: "ㄱㄱ"
 },
   {
     name: "상태",

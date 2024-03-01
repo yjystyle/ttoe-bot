@@ -1,5 +1,5 @@
-require("dotenv").config();
-
+const dotenv = require("dotenv");
+// console.log(dotenv);
 const db = require("./db");
 const moment = require("moment-timezone");
 const {
@@ -269,18 +269,16 @@ client.on("interactionCreate", async (interaction) => {
       .permissionsFor(interaction.guild.roles.everyone)
       .has(PermissionsBitField.Flags.ViewChannel);
     if (channelCheck) return;
-    const channelId = interaction.channel.id;
-    sendMessageToChannel(channelId);
+
+    sendStatusMessageToChannel();
     await interaction.reply({
       content: `아래 처럼 대답해드릴 수 있을 것 같습니다.`,
       ephemeral: true,
     });
-    // });
-    // });
   } else if (interaction.commandName === "갱신") {
     const channelCheck = interaction.channel
-    .permissionsFor(interaction.guild.roles.everyone)
-    .has(PermissionsBitField.Flags.ViewChannel);
+      .permissionsFor(interaction.guild.roles.everyone)
+      .has(PermissionsBitField.Flags.ViewChannel);
     if (channelCheck) return;
 
     const { User, Channel, UserChannel } = db.models;
@@ -357,15 +355,15 @@ client.on("interactionCreate", async (interaction) => {
       content: `${guild.name}내의 모든 유저 정보가 갱신되었습니다.`,
       ephemeral: true,
     });
-  } else if (interaction.commandName === "기회") {
+  } else if (interaction.commandName === "떠") {
     const channelCheck = interaction.channel
-    .permissionsFor(interaction.guild.roles.everyone)
-    .has(PermissionsBitField.Flags.ViewChannel);
+      .permissionsFor(interaction.guild.roles.everyone)
+      .has(PermissionsBitField.Flags.ViewChannel);
     if (channelCheck) return;
 
     const embed = new EmbedBuilder()
       .setColor("#0099ff")
-      .setTitle(`밤에 ${interaction.channel.name} 가능?`);
+      .setTitle(`오늘 ${interaction.channel.name} 가능?`);
     // .setDescription(`${notDecisionUsers} 하면 함.`);
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -388,6 +386,61 @@ client.on("interactionCreate", async (interaction) => {
 // let sendDm = function() {
 //   const
 // }
+let sendStatusMessageToChannel = function () {
+  const { Channel, UserChannel, User } = db.models;
+  Channel.findAll().then((channel_list) => {
+    channel_list.forEach(async (c) => {
+      // console.log(c);
+      let channel_id = c.dataValues.channel_id;
+      let channel = await client.channels.cache.get(channel_id);
+      let channel_name = c.dataValues.channel_name;
+
+      // 조인문 필요
+      const userChannels = await UserChannel.findAll({
+        include: [{ model: User }, { model: Channel }],
+        where: { channelId: channel_id }, // 채널 ID 조건 추가
+      });
+
+      let canGameFlag = getCanGameFlag(userChannels);
+      // let userStatusList = [];
+      if (canGameFlag == 0) {
+        const embed = new EmbedBuilder()
+          .setColor("#75f62e")
+          .setTitle(`${channel_name} 쌉가능한 상태`)
+          .setDescription("ㅃㄹ");
+        channel.send({ embeds: [embed] });
+      } else if (canGameFlag == 2) {
+        const notDecisionUsers = userChannels
+          .filter((userChannel) => userChannel.dataValues.status === 2)
+          .map(
+            (userChannel) =>
+              userChannel.user.globalName ?? userChannel.user.name
+          )
+          .join(", ");
+        const embed = new EmbedBuilder()
+          .setColor("#0099ff")
+          .setTitle(`${notDecisionUsers}에 달려 있음`)
+          .setDescription(`${notDecisionUsers} 하면 함.`);
+        channel.send({ embeds: [embed] });
+      } else {
+        const cantGameUsers = userChannels
+          .filter((userChannel) => userChannel.dataValues.status === 1)
+          .map(
+            (userChannel) =>
+              userChannel.user.globalName ?? userChannel.user.name
+          )
+          .join(", ");
+        const embed = new EmbedBuilder()
+          .setColor("#ff2701")
+          .setTitle(`${channel_name} 사실상 불가능`)
+          .setDescription(`${cantGameUsers} 때문에 불가능`);
+        channel.send({ embeds: [embed] });
+      }
+    });
+  });
+
+  // let channels = channel_list.map((c)=> c.dataValues.channel_id);
+};
 
 let sendMessageToChannel = function (channelId) {
   const { Channel, UserChannel, User } = db.models;
@@ -413,36 +466,24 @@ let sendMessageToChannel = function (channelId) {
         where: { channelId: channel_id }, // 채널 ID 조건 추가
       });
 
-      let canGameFlag = 2;
-      // let userStatusList = [];
-
-      // 모두가 0이면
-      let userStatusList = userChannels.map(
-        (userChannel) => userChannel.dataValues.status
-      );
-      let allTwos = userStatusList.every((x) => x === 0);
-      if (allTwos) {
-        canGameFlag = 0;
-        // 1은 없지만 그래도 2가 있는 경우
-      } else if (userStatusList.includes(2) && !userStatusList.includes(1)) {
-        canGameFlag = 2;
-      } else {
-        canGameFlag = 1;
-      }
+      let canGameFlag = getCanGameFlag(userChannels);
       if (canGameFlag == 0) {
         const embed = new EmbedBuilder()
           .setColor("#75f62e")
-          .setTitle(`밤에 ${channel_name} 쌉가능한 상태`)
+          .setTitle(`오늘 ${channel_name} 쌉가능한 상태`)
           .setDescription("ㅃㄹ");
         channel.send({ embeds: [embed] });
       } else if (canGameFlag == 2) {
         const notDecisionUsers = userChannels
           .filter((userChannel) => userChannel.dataValues.status === 2)
-          .map((userChannel) => userChannel.user.name)
+          .map(
+            (userChannel) =>
+              userChannel.user.globalName ?? userChannel.user.name
+          )
           .join(", ");
         const embed = new EmbedBuilder()
           .setColor("#0099ff")
-          .setTitle(`밤에 ${channel_name} 가능?`)
+          .setTitle(`오늘 ${channel_name} 가능?`)
           .setDescription(`${notDecisionUsers} 하면 함.`);
         const row = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -462,7 +503,10 @@ let sendMessageToChannel = function (channelId) {
       } else {
         const cantGameUsers = userChannels
           .filter((userChannel) => userChannel.dataValues.status === 1)
-          .map((userChannel) => userChannel.user.name)
+          .map(
+            (userChannel) =>
+              userChannel.user.globalName ?? userChannel.user.name
+          )
           .join(", ");
         const embed = new EmbedBuilder()
           .setColor("#ff2701")
@@ -484,15 +528,37 @@ client.on("interactionCreate", async (interaction) => {
     // console.log(channel);
     const username = interaction.user.globalName;
     if (interaction.customId === "0") {
-      await interaction.reply(`${username} - 굿 결정`);
+      changeStatus(interaction);
+
+      // 전체 가능한지 확인
+      // 조인문 필요
+      const { UserChannel, User, Channel } = db.models;
+      const userChannels = await UserChannel.findAll({
+        include: [{ model: User }, { model: Channel }],
+        where: { channelId: interaction.channel.id }, // 채널 ID 조건 추가
+      });
+      let canGameFlag = getCanGameFlag(userChannels);
+      if (canGameFlag === 0) {
+        const embed = new EmbedBuilder()
+          .setColor("#75f62e")
+          .setTitle(`${interaction.channel.name} 쌉가능한 상태`)
+          .setDescription("ㅃㄹ");
+        await interaction.reply({ embeds: [embed] });
+      } else {
+        await interaction.reply(`${username} - 굿 결정`);
+      }
+
       // changeStatus(interaction);
     } else if (interaction.customId === "1") {
+      changeStatus(interaction);
+
       await interaction.reply(`${username} - 족볍이`);
       // changeStatus(interaction);
     } else {
+      changeStatus(interaction);
+
       await interaction.reply(`${username} - 결정되면 다시 응답해주세요.`);
     }
-    changeStatus(interaction);
   } catch (error) {
     console.log(error);
   }
@@ -536,7 +602,21 @@ const a = new CronJob(
   null,
   false
 );
-
+const getCanGameFlag = function (userChannels) {
+  // 모두가 0이면
+  let userStatusList = userChannels.map(
+    (userChannel) => userChannel.dataValues.status
+  );
+  let allTwos = userStatusList.every((x) => x === 0);
+  if (allTwos) {
+    return 0;
+    // 1은 없지만 그래도 2가 있는 경우
+  } else if (userStatusList.includes(2) && !userStatusList.includes(1)) {
+    return 2;
+  } else {
+    return 1;
+  }
+};
 const getKSTToday = function () {
   // 현재 시각을 KST로 변환하여 가져옵니다.
   const kstNow = moment().tz("Asia/Seoul");
@@ -544,5 +624,11 @@ const getKSTToday = function () {
   const yyyymmddKST = kstNow.format("YYYYMMDD");
   return yyyymmddKST;
 };
+
+if (process.env.NODE_ENV === "prd") {
+  dotenv.config({ path: ".env.prd" });
+} else {
+  dotenv.config({ path: ".env.dev" });
+}
 
 client.login(process.env.TOKEN);
