@@ -53,13 +53,13 @@ client.on("ready", (c) => {
   // console.log(c.user);
   console.log(`✅ ${c.user.tag} is online`);
 
-  a.start();
+  cronwork.start();
 
   // channel_ID를 리스트로 받아서 별도의 채널에 각각 호출하도록 적용
   // const channel_ids =
   // let channel_id_list = channel_list.map((c)=> c.dataValues.channel_id);
   // let channel_id = c.dataValues.channel_id;
-  checkAndSendMessage();
+  // checkAndSendMessage();
 });
 
 function checkAndSendMessage() {
@@ -398,7 +398,7 @@ let sendStatusMessageToChannel = function () {
       // 조인문 필요
       const userChannels = await UserChannel.findAll({
         include: [{ model: User }, { model: Channel }],
-        where: { channelId: channel_id }, // 채널 ID 조건 추가
+        where: { date:getKSTToday(), channelId: channel_id }, // 채널 ID 조건 추가
       });
 
       let canGameFlag = getCanGameFlag(userChannels);
@@ -463,7 +463,7 @@ let sendMessageToChannel = function (channelId) {
       // 조인문 필요
       const userChannels = await UserChannel.findAll({
         include: [{ model: User }, { model: Channel }],
-        where: { channelId: channel_id }, // 채널 ID 조건 추가
+        where: { date:getKSTToday(), channelId: channel_id }, // 채널 ID 조건 추가
       });
 
       let canGameFlag = getCanGameFlag(userChannels);
@@ -535,7 +535,7 @@ client.on("interactionCreate", async (interaction) => {
       const { UserChannel, User, Channel } = db.models;
       const userChannels = await UserChannel.findAll({
         include: [{ model: User }, { model: Channel }],
-        where: { channelId: interaction.channel.id }, // 채널 ID 조건 추가
+        where: { date:getKSTToday(), channelId: interaction.channel.id }, // 채널 ID 조건 추가
       });
       let canGameFlag = getCanGameFlag(userChannels);
       if (canGameFlag === 0) {
@@ -593,8 +593,8 @@ let reschedule = function (input) {
   a.setTime(new CronTime(input));
 };
 
-let scheduledTime = "* 1 * * *"; // 초기 스케쥴러 시간 (매일 오후 2시 30분)
-const a = new CronJob(
+let scheduledTime = "0 10 * * *"; // 초기 스케쥴러 시간 (매일 오후 2시 30분)
+const cronwork = new CronJob(
   scheduledTime,
   function () {
     checkAndSendMessage();
