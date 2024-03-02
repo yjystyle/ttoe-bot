@@ -1,10 +1,16 @@
 module.exports = {
-    apps : [{
+  apps: [
+    {
       name: "tteo-bot",
-      script: "./src/index.js",
-      watch: [
-          "src",
-      ],
-      ignore_watch: [".env*", "*.sqlite"]
-    }]
-  }
+      script: "npm run prd",
+      watch: ["src"],
+      ignore_watch: ["node_moduels", ".env*", "*.sqlite"],
+    },
+    {
+      name: "tteo-bot-test",
+      script: "npm run dev",
+      watch: ["src"],
+      ignore_watch: ["node_moduels", ".env*", "*.sqlite"],
+    },
+  ],
+};
