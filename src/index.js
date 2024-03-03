@@ -82,7 +82,7 @@ function checkAndSendMessage() {
             }
           });
           if (sendFlag) {
-            console.log(cantMembers);
+            // console.log(cantMembers);
             sendMessageToChannel(channelId);
           }
 
@@ -270,7 +270,7 @@ client.on("interactionCreate", async (interaction) => {
       .has(PermissionsBitField.Flags.ViewChannel);
     if (channelCheck) return;
 
-    sendStatusMessageToChannel();
+    sendStatusMessageToChannel(interaction.channel.id);
     await interaction.reply({
       content: `아래 처럼 대답해드릴 수 있을 것 같습니다.`,
       ephemeral: true,
@@ -319,9 +319,19 @@ client.on("interactionCreate", async (interaction) => {
 // let sendDm = function() {
 //   const
 // }
-let sendStatusMessageToChannel = function () {
+let sendStatusMessageToChannel = function (channelId) {
   const { Channel, UserChannel, User } = db.models;
-  Channel.findAll().then((channel_list) => {
+
+  let resultPromise = null;
+  if (channelId) {
+    // console.log("채널 한개 가져옴");
+    resultPromise = Channel.findAll({ where: { channel_id: channelId } });
+  } else {
+    // console.log("전체 가져옴");
+    resultPromise = Channel.findAll();
+  }
+
+  resultPromise.then((channel_list) => {
     channel_list.forEach(async (c) => {
       // console.log(c);
       let channel_id = c.dataValues.channel_id;
@@ -335,6 +345,7 @@ let sendStatusMessageToChannel = function () {
       });
 
       let canGameFlag = getCanGameFlag(userChannels);
+      // console.log(canGameFlag);
       // let userStatusList = [];
       if (canGameFlag == 0) {
         const embed = new EmbedBuilder()
@@ -610,12 +621,12 @@ const rebuildDB = async function (guild) {
             .has(PermissionsBitField.Flags.ViewChannel)
         )
         .forEach((memberId) => {
-          console.log(
-            channel.name,
-            channel
-              .permissionsFor(memberId)
-              .has(PermissionsBitField.Flags.ViewChannel)
-          );
+          // console.log(
+          //   channel.name,
+          //   channel
+          //     .permissionsFor(memberId)
+          //     .has(PermissionsBitField.Flags.ViewChannel)
+          // );
           UserChannel.upsert({
             date: getKSTToday(),
             userId: memberId,
