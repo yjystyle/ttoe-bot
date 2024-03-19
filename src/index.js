@@ -282,6 +282,7 @@ client.on("interactionCreate", async (interaction) => {
     if (channelCheck) return;
 
     const guild = client.guilds.cache.get(process.env.GUILD_ID);
+    // console.log(guild)
     await rebuildDB(guild);
     // Iterate over each member/user and log their username and ID
     await interaction.reply({
@@ -470,7 +471,12 @@ client.on("interactionCreate", async (interaction) => {
     // await interaction.deferReply({ ephemeral: true });
     // let channel = interaction.channels.cache;
     // console.log(channel);
-    const username = interaction.user.globalName ?? interaction.user.name;
+    const username =
+      interaction.user.globalName === undefined ||
+      interaction.user.globalName === "undefined"
+        ? interaction.user.name
+        : interaction.user.globalName;
+
     if (interaction.customId === "0") {
       changeStatus(interaction);
 
@@ -633,6 +639,24 @@ const rebuildDB = async function (guild) {
             channelId: channel.id,
           });
         });
+    });
+
+  const newData = {
+    status: 0,
+  };
+  const condition = {
+    where: {
+      date: getKSTToday(),
+      userId: "554284790480896002",
+    },
+  };
+  // const data = await UserChannel.create({date: getKSTToday(), channelId: channelId, userId : userId});
+  UserChannel.update(newData, condition)
+    .then((result) => {
+      console.log("Update Successful:", result); // 업데이트된 레코드 수 등의 정보가 포함됩니다.
+    })
+    .catch((error) => {
+      console.error("Error occurred during update:", error);
     });
 };
 const getKSTToday = function () {
